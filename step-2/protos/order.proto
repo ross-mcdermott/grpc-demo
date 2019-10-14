@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Orders.Grpc";
+
+package moonbucks;
+
+service OrderService {
+    rpc SubscribeOrders(SubscribeOrdersRequest) returns (stream CoffeeOrder) {}
+    rpc CreateOrder(CreateOrderRequest) returns (CoffeeOrder) {
+        option (google.api.http) = {
+            post: "/v1/orders"
+            body: "*"
+        };
+    }
+    rpc UpdateOrder(UpdateOrderRequest) returns (CoffeeOrder) {
+        option (google.api.http) = {
+            patch: "/v1/orders/{order.id}"
+            body: "order"
+        };
+    }
+}
+
+message SubscribeOrdersRequest { }
+
+message CreateOrderRequest {
+    Size size = 2;
+    string coffee_type = 3;
+};
+
+message UpdateOrderRequest {
+    CoffeeOrder order = 1;
+    google.protobuf.FieldMask order_mask = 2;
+}
+message CoffeeOrder {
+    int64 id = 1;
+    Size size = 2;
+    string coffee_type = 3;
+};
+
+enum Size {
+    SMALL = 0;
+    MEDIUM = 1;
+    LARGE = 2;
+}
