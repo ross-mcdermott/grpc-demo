@@ -10,7 +10,8 @@ using Orders.Grpc;
 namespace Orders.Services
 {
     public class OrderService : Orders.Grpc.OrderService.OrderServiceBase
-    { 
+    {
+        #region Manual Code
         private static Dictionary<long, CoffeeOrder> _orders = new Dictionary<long, CoffeeOrder>();
         private static List<IServerStreamWriter<CoffeeOrder>> _subscribers = new List<IServerStreamWriter<CoffeeOrder>>();
         private ILogger _logger;
@@ -18,6 +19,28 @@ namespace Orders.Services
         public OrderService(ILogger<OrderService> logger)
         {
             this._logger = logger;
+        }
+
+        public override Task<CoffeeOrder> CreateOrder(CreateOrderRequest request, ServerCallContext context)
+        {
+            this._logger.LogInformation($"Creating order: {request.Size} {request.CoffeeType}");
+
+            var coffeeOrder = new CoffeeOrder
+            {
+                Id = _orders.Count() + 1,
+                CoffeeType = request.CoffeeType,
+                Size = request.Size
+            };
+
+            _orders[coffeeOrder.Id] = coffeeOrder;
+
+            _subscribers.ForEach(async s =>
+            {
+                await s.WriteAsync(coffeeOrder);
+
+            });
+
+            return Task.FromResult(coffeeOrder);
         }
 
         public override Task<CoffeeOrder> UpdateOrder(UpdateOrderRequest request, ServerCallContext context)
@@ -42,8 +65,14 @@ namespace Orders.Services
 
         public override async Task SubscribeOrders(SubscribeOrdersRequest request, IServerStreamWriter<CoffeeOrder> responseStream, ServerCallContext context)
         {
-            this._logger.LogInformation($"Subscribing to order...");
+            this._logger.LogInformation($"Subscribing to orders...");
             _subscribers.Add(responseStream);
+
+            // send the current state first
+            foreach(var item in _orders)
+            {
+                await responseStream.WriteAsync(item.Value);
+            }
 
             context.CancellationToken.Register(() =>
             {
@@ -58,26 +87,7 @@ namespace Orders.Services
             
         }
 
-        public override Task<CoffeeOrder> CreateOrder(CreateOrderRequest request, ServerCallContext context)
-        {
-            this._logger.LogInformation($"Creating order: {request.Size} {request.CoffeeType}");
-            
-            var coffeeOrder = new CoffeeOrder
-            {
-                Id = _orders.Count() + 1,
-                CoffeeType = request.CoffeeType,
-                Size = request.Size
-            };
-
-            _orders[coffeeOrder.Id] = coffeeOrder;
-
-            _subscribers.ForEach(async s =>
-            {
-                await s.WriteAsync(coffeeOrder);
-
-            });
-          
-            return Task.FromResult(coffeeOrder);
-        }
+        
+        #endregion
     }
 }

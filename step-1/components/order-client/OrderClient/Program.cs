@@ -20,9 +20,10 @@ namespace OrderClient
             {
                 try
                 {
-                    Console.WriteLine("Adding order...");
+                    
                     var order = await client.CreateOrderAsync(
                                new CreateOrderRequest { CoffeeType = "latte", Size = Size.Small });
+                    Console.WriteLine($"Added order...{order.Id}");
                 }
                 catch(Exception ex)
                 {
@@ -30,7 +31,7 @@ namespace OrderClient
                 }
                 
 
-                await Task.Delay(5000);
+                await Task.Delay(7000);
             }
 
             
